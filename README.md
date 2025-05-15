@@ -19,15 +19,17 @@ Instalează Max de pe Cycling74.
 ## Utilizare
 Efecte implementate
 
-Mâna Stângă - Reverb
+Mâna Stângă: controlează Reverb
+/left/distance1 → controlează wet/dry
+/left/rotation1 → controlează decay
+/left/distance2 → eventual predelay sau dimensiune cameră
+/left/rotation2 → damping sau tonul reverbului
 
-Distanță thumb-index: controlează wet/dry.
-Unghi thumb-index: controlează durata reverbului (decay).
-
-Mâna Dreaptă - Filtru
-
-Distanță thumb-pinky: controlează frecvența cutoff.
-Unghi thumb-pinky: controlează rezonanța filtrului.
+Mâna Dreaptă: controlează un Filtru
+/right/distance1 → cutoff (200–8000 Hz)
+/right/rotation1 → rezonanță (Q)
+/right/distance2 → eventual panoramare sau mix dry/wet pentru filtrul aplicat
+/right/rotation2 → tipul filtrului (cu un [selector] între LP/HP/BP etc.)
 
 ## (Istoric)
 
@@ -38,7 +40,7 @@ Unghi thumb-pinky: controlează rezonanța filtrului.
 (X.06) ...
 
 ## (Link-uri)
-(https://python-osc.readthedocs.io/en/latest/)
+(https://www.youtube.com/watch?v=KRrFFGOX6Sc&pp=ygUdY29udHJvbCBhYmxldG9uIGxpdmUgd2l0aCBtYXg%3D)
 
 # Dezvoltarea proiectului
 
@@ -46,13 +48,27 @@ Inițial am găsit pe YouTube un video în care cineva controlează Ableton Live
 
 https://www.youtube.com/watch?v=KRrFFGOX6Sc&pp=ygUdY29udHJvbCBhYmxldG9uIGxpdmUgd2l0aCBtYXg%3D
 
-vreau sa trimit 
-/left/distance1, /left/rotation1, /left/distance2, /left/rotation2
+Mâna Stângă: controlează Reverb
+/left/distance1 → controlează wet/dry
+/left/rotation1 → controlează decay
+/left/distance2 → eventual predelay sau dimensiune cameră
+/left/rotation2 → damping sau tonul reverbului
 
-/right/distance1, /right/rotation1, /right/distance2, /right/rotation2
-
+Mâna Dreaptă: controlează un Filtru
+/right/distance1 → cutoff (200–8000 Hz)
+/right/rotation1 → rezonanță (Q)
+/right/distance2 → eventual panoramare sau mix dry/wet pentru filtrul aplicat
+/right/rotation2 → tipul filtrului (cu un [selector] între LP/HP/BP etc.)
 
 ## Elemente obligatorii
+
+Fișierul Python   - hand_tracking.py 
+
+Conține codul cu MediaPipe + OSC
+
+Patch-ul Max/MSP  - hand_effects.maxpat
+
+
 
 1. Acest readme completat. Titlu, descriere, mod de utilizare, istoric, link-uri utile.
 
