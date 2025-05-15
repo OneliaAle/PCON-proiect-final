@@ -1,46 +1,56 @@
-# (Titlul)
-(Scurtă descriere)
+# Hand-Controlled Audio Effects
+Acest proiect utilizează recunoașterea gesturilor mâinilor pentru a controla efecte audio în timp real. Folosind Python, MediaPipe și OSC în Max/MSP, distanța și unghiurile dintre degete influențează parametri audio precum reverb și filtre.
 
-## (Instalare)
-...
+## Instalare
+Cerințe:
 
-## (Utilizare)
-...
+Python 3.x
+OpenCV
+MediaPipe
+python-osc
+Max/MSP
+
+   Instalarea bibliotecilor Python:
+pip install opencv-python mediapipe python-osc
+
+   Max/MSP
+Instalează Max de pe Cycling74.
+
+## Utilizare
+Efecte implementate
+
+Mâna Stângă - Reverb
+
+Distanță thumb-index: controlează wet/dry.
+Unghi thumb-index: controlează durata reverbului (decay).
+
+Mâna Dreaptă - Filtru
+
+Distanță thumb-pinky: controlează frecvența cutoff.
+Unghi thumb-pinky: controlează rezonanța filtrului.
 
 ## (Istoric)
 
-(13.05) ...
+(14.05) ...
 
 (3.06) ...
 
 (X.06) ...
 
 ## (Link-uri)
-...
+(https://python-osc.readthedocs.io/en/latest/)
 
 # Dezvoltarea proiectului
 
-Pentru început:
+Inițial am găsit pe YouTube un video în care cineva controlează Ableton Live folosind MediaPipe și OSC. Acesta a creat un plugin care controlează semnalul audio folosind gesturi ale mâinilor. Am preluat codul său și am încercat să-l adaptez astfel încât să-l integrez cu Max/MSP. Am reușit să îl fac să funcționeze și acum intenționez să modific codul original pentru a elimina interfața grafică inițială și să fac direct în Max citirea camerei și afișarea video.  
 
-1. Creează-ți cont pe Github
-2. Download și install [Github Desktop](https://desktop.github.com/)
-3. Citește [acest ghid](https://charlesmartin.com.au/blog/2020/08/09/student-project-repository) și ține la îndemână [Markdown Cheat Sheet](https://www.markdownguide.org/cheat-sheet).
+https://www.youtube.com/watch?v=KRrFFGOX6Sc&pp=ygUdY29udHJvbCBhYmxldG9uIGxpdmUgd2l0aCBtYXg%3D
 
-Apoi, procesul este următorul (inspirat de [aici](https://cs.anu.edu.au/courses/comp1720/deliverables/05-major-project/#submission-process)):
+vreau sa trimit 
+/left/distance1, /left/rotation1, /left/distance2, /left/rotation2
 
-1. *fork* al acestui template către propriul tău cont de Github
+/right/distance1, /right/rotation1, /right/distance2, /right/rotation2
 
-![](assets/fork.gif)
-
-_(dacă preferi cumva ca repo-ul să nu fie vizibil de către public, îl poți seta ca Private din Settings - "Change visibility". Atunci trebuie să mă adaugi drept colaborator, ca eu să am acces.)_
-
-2. *clone* al repo-ului din Github Desktop pentru a-l downloada local
-
-![](assets/clone.gif)
-
-3. *commit* și *push* pe măsură ce lucrezi la proiect. Ultima versiune push-ată pe server înainte de deadline va conta pentru evaluare.
-
-![](assets/commit.gif)
 
 ## Elemente obligatorii
 
