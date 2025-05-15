@@ -40,7 +40,7 @@ Mâna Dreaptă: controlează un Filtru
 (X.06) ...
 
 ## (Link-uri)
-(https://www.youtube.com/watch?v=KRrFFGOX6Sc&pp=ygUdY29udHJvbCBhYmxldG9uIGxpdmUgd2l0aCBtYXg%3D)
+
 
 # Dezvoltarea proiectului
 
