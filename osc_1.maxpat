@@ -30,8 +30,8 @@
 					"numinlets" : 2,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 556.0, 96.0, 70.0, 22.0 ],
-					"text" : "/shoutdown"
+					"patching_rect" : [ 556.0, 96.0, 63.0, 22.0 ],
+					"text" : "/shutdown"
 				}
 
 			}

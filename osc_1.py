@@ -141,10 +141,11 @@ def osc_stop_camera(unused_addr):
 
 # Comanda pentru oprirea completa a scriptului
 def osc_shutdown(unused_addr):
-    global shutdown_requested
     print("Shutdown primit. Inchidere script...")
-    shutdown_requested = True
     stop_current_stream()
+    if server:
+        server.server_close()
+    sys.exit(0)
 
 # Dispatcher OSC
 disp = dispatcher.Dispatcher()
