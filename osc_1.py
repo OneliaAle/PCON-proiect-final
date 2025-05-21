@@ -3,15 +3,13 @@ import numpy as np
 import mediapipe as mp
 from pythonosc import udp_client
 from pythonosc import dispatcher, osc_server
-# from spoutpy import SpoutSender  # (activati cand Spout e instalat)
 import math
 import threading
 import sys
 
-# OSC client (trimite date spre Max)
 osc_client = udp_client.SimpleUDPClient("127.0.0.1", 7400)
+osc_client.send_message("/test", 1)
 
-# MediaPipe setup
 mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(static_image_mode=False,
                        max_num_hands=2,
@@ -19,34 +17,27 @@ hands = mp_hands.Hands(static_image_mode=False,
                        min_tracking_confidence=0.5)
 mp_draw = mp.solutions.drawing_utils
 
-# Variabile globale
 current_camera = None
 running = False
-sender = None  # Spout sender (doar daca folosesti Spout)
-server = None  # OSC server
+server = None
 shutdown_requested = False
 
-# Opreste camera
 def stop_current_stream():
-    global current_camera, running, sender
+    global current_camera, running
     if current_camera is not None:
         running = False
         current_camera.release()
         cv2.destroyAllWindows()
     current_camera = None
-    # if sender:
-    #     sender.releaseSender()
-    #     sender = None
 
-# Porneste camera si incepe tracking
 def start_hand_tracking(camera_index):
-    global current_camera, running, sender, shutdown_requested
+    global current_camera, running, shutdown_requested
 
     stop_current_stream()
     shutdown_requested = False
 
     def run_camera():
-        global current_camera, running, sender, shutdown_requested
+        global current_camera, running, shutdown_requested
 
         cap = cv2.VideoCapture(camera_index)
         if not cap.isOpened():
@@ -56,66 +47,93 @@ def start_hand_tracking(camera_index):
         current_camera = cap
         running = True
 
-        frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        def euclidean(a, b):
+            return np.linalg.norm(np.array([a.x, a.y]) - np.array([b.x, b.y]))
 
-        # sender = SpoutSender()
-        # sender.createSender("mediapipe_spout", frame_width, frame_height, 0)
+        def remap_distance(val):
+            return np.clip((val - 0.1) / 0.4, 0, 1)
 
-        def remap_distance(d):
-            return np.clip((d - 0.5) / 0.5, 0, 1)
-
-        def remap_angle(a):
-            return np.clip((a - 30) / 60, 0, 1)
+        def remap_angle(angle):
+            return np.clip((angle - 30) / 60, 0, 1)
 
         while running and not shutdown_requested:
             success, img = cap.read()
             if not success:
                 break
 
-            img = cv2.flip(img, 1)  # OGLINDIRE imagine orizontal
+            img = cv2.flip(img, 1)
             img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             results = hands.process(img_rgb)
 
+            frame_h, frame_w = img.shape[:2]
+
             if results.multi_hand_landmarks:
+                print("Mana detectata ✅")
                 for i, hand_landmarks in enumerate(results.multi_hand_landmarks):
                     handedness = results.multi_handedness[i].classification[0].label  # 'Left' sau 'Right'
                     mp_draw.draw_landmarks(img, hand_landmarks, mp_hands.HAND_CONNECTIONS)
 
-                    thumb = hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_TIP]
-                    index = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
-                    pinky = hand_landmarks.landmark[mp_hands.HandLandmark.PINKY_TIP]
+                    # Landmark-uri utile
+                    thumb_tip = hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_TIP]
+                    index_tip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
+                    pinky_tip = hand_landmarks.landmark[mp_hands.HandLandmark.PINKY_TIP]
                     wrist = hand_landmarks.landmark[mp_hands.HandLandmark.WRIST]
-
-                    hand_length = np.hypot(index.x - wrist.x, index.y - wrist.y)
-                    d1 = np.hypot(index.x - thumb.x, index.y - thumb.y)
-                    d2 = np.hypot(pinky.x - thumb.x, pinky.y - thumb.y)
-                    rd1 = d1 / hand_length
-                    rd2 = d2 / hand_length
-
-                    dx1, dy1 = index.x - thumb.x, index.y - thumb.y
-                    dx2, dy2 = pinky.x - thumb.x, pinky.y - thumb.y
-                    a1 = math.degrees(math.atan2(abs(dy1), abs(dx1)))
-                    a2 = math.degrees(math.atan2(abs(dy2), abs(dx2)))
-
-                    nr1 = remap_angle(a1)
-                    nr2 = remap_angle(a2)
-
-                    rm1 = remap_distance(rd1)
-                    rm2 = remap_distance(rd2)
 
                     prefix = "/left" if handedness == "Left" else "/right"
 
-                    osc_client.send_message(f"{prefix}/distance1", rm1)
-                    osc_client.send_message(f"{prefix}/rotation1", nr1)
-                    osc_client.send_message(f"{prefix}/distance2", rm2)
-                    osc_client.send_message(f"{prefix}/rotation2", nr2)
+                    # Calcule
+                    distance1 = euclidean(thumb_tip, index_tip)
+                    distance2 = euclidean(thumb_tip, pinky_tip)
+                    dx1, dy1 = index_tip.x - thumb_tip.x, index_tip.y - thumb_tip.y
+                    dx2, dy2 = pinky_tip.x - thumb_tip.x, pinky_tip.y - thumb_tip.y
+                    angle1 = math.degrees(math.atan2(abs(dy1), abs(dx1)))
+                    angle2 = math.degrees(math.atan2(abs(dy2), abs(dx2)))
 
-            # Pentru Spout (daca instalezi ulterior):
-            # img_bgra = cv2.cvtColor(img, cv2.COLOR_BGR2BGRA)
-            # sender.sendImage(img_bgra)
+                    # Trimitem OSC
+                    osc_client.send_message(f"{prefix}/distance1", distance1)
 
-            # Afiseaza imaginea in fereastra OpenCV
+                    print(f"{prefix}/distance1 {distance1}")
+
+                    
+                    osc_client.send_message(f"{prefix}/rotation1", angle1)
+                    osc_client.send_message(f"{prefix}/distance2", distance2)
+                    osc_client.send_message(f"{prefix}/rotation2", angle2)
+
+                    # Transformă coordonatele în pixeli
+                    def to_px(landmark):
+                        return (int(landmark.x * img.shape[1]), int(landmark.y * img.shape[0]))
+
+                    thumb_px = to_px(thumb_tip)
+                    index_px = to_px(index_tip)
+                    pinky_px = to_px(pinky_tip)
+
+                    # Culori
+                    if handedness == "Left":
+                        color1 = (0, 0, 255)      # roșu (distance1)
+                        color2 = (0, 255, 255)    # galben (distance2)
+                        text_color1 = (0, 0, 255)
+                        text_color2 = (0, 255, 255)
+                    else:
+                        color1 = (0, 255, 0)      # verde (distance1)
+                        color2 = (255, 0, 0)      # albastru (distance2)
+                        text_color1 = (0, 255, 0)
+                        text_color2 = (255, 0, 0)
+
+                    # Desenăm linii colorate
+                    cv2.line(img, thumb_px, index_px, color1, 2)
+                    cv2.line(img, thumb_px, pinky_px, color2, 2)
+
+                    # Afișăm valori pe imagine
+                    if handedness == "Left":
+                        x_offset, y_offset = 10, 30  # colțul stânga sus
+                    else:
+                        x_offset, y_offset = img.shape[1] - 200, 30  # colțul dreapta sus
+
+                    cv2.putText(img, f'D1: {distance1:.2f}', (x_offset, y_offset), cv2.FONT_HERSHEY_SIMPLEX, 0.7, text_color1, 2)
+                    cv2.putText(img, f'R1: {angle1:.2f}', (x_offset, y_offset + 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, text_color1, 2)
+                    cv2.putText(img, f'D2: {distance2:.2f}', (x_offset, y_offset + 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, text_color2, 2)
+                    cv2.putText(img, f'R2: {angle2:.2f}', (x_offset, y_offset + 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, text_color2, 2)
+
             cv2.imshow("Hand Tracking", img)
             if cv2.waitKey(1) & 0xFF == 27:
                 break
@@ -130,7 +148,6 @@ def start_hand_tracking(camera_index):
 
     threading.Thread(target=run_camera, daemon=True).start()
 
-# OSC listener (primeste comenzi din Max)
 def osc_start_camera(unused_addr, camera_index):
     print(f"Camera {camera_index} pornita")
     start_hand_tracking(int(camera_index))
@@ -139,21 +156,17 @@ def osc_stop_camera(unused_addr):
     print("Camera oprita")
     stop_current_stream()
 
-# Comanda pentru oprirea completa a scriptului
 def osc_shutdown(unused_addr):
+    global shutdown_requested
     print("Shutdown primit. Inchidere script...")
-    stop_current_stream()
-    if server:
-        server.server_close()
-    sys.exit(0)
+    shutdown_requested = True
+    running = False
 
-# Dispatcher OSC
 disp = dispatcher.Dispatcher()
 disp.map("/camera/start", osc_start_camera)
 disp.map("/camera/stop", osc_stop_camera)
 disp.map("/shutdown", osc_shutdown)
 
-# Server OSC
 server = osc_server.ThreadingOSCUDPServer(("127.0.0.1", 7400), disp)
 print(f"OSC server pornit pe {server.server_address}")
 server.serve_forever()
