@@ -7,8 +7,8 @@ import math
 import threading
 import sys
 
-osc_client = udp_client.SimpleUDPClient("127.0.0.1", 7400)
-osc_client.send_message("/test", 1)
+# osc_client = udp_client.SimpleUDPClient("127.0.0.1", 7500)
+#osc_client.send_message("/test", 1)
 
 mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(static_image_mode=False,
@@ -67,72 +67,105 @@ def start_hand_tracking(camera_index):
 
             frame_h, frame_w = img.shape[:2]
 
-            if results.multi_hand_landmarks:
+            if results.multi_hand_landmarks: 
                 print("Mana detectata ✅")
+                # Inițializezi variabile pentru fiecare mână, dacă vrei să le folosești separat mai jos
+                left_hand = None
+                right_hand = None
+
+                # Identifici și salvezi separat fiecare mână
                 for i, hand_landmarks in enumerate(results.multi_hand_landmarks):
                     handedness = results.multi_handedness[i].classification[0].label  # 'Left' sau 'Right'
-                    mp_draw.draw_landmarks(img, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+                    if handedness == "Left":
+                        left_hand = hand_landmarks
+                    elif handedness == "Right":
+                        right_hand = hand_landmarks
 
-                    # Landmark-uri utile
-                    thumb_tip = hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_TIP]
-                    index_tip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
-                    pinky_tip = hand_landmarks.landmark[mp_hands.HandLandmark.PINKY_TIP]
-                    wrist = hand_landmarks.landmark[mp_hands.HandLandmark.WRIST]
+                # Procesare pentru mâna stângă
+                if left_hand is not None:
+                    mp_draw.draw_landmarks(img, left_hand, mp_hands.HAND_CONNECTIONS)
 
-                    prefix = "/left" if handedness == "Left" else "/right"
+                    thumb_tip = left_hand.landmark[mp_hands.HandLandmark.THUMB_TIP]
+                    index_tip = left_hand.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
+                    pinky_tip = left_hand.landmark[mp_hands.HandLandmark.PINKY_TIP]
+                    wrist = left_hand.landmark[mp_hands.HandLandmark.WRIST]
 
-                    # Calcule
-                    distance1 = euclidean(thumb_tip, index_tip)
-                    distance2 = euclidean(thumb_tip, pinky_tip)
-                    dx1, dy1 = index_tip.x - thumb_tip.x, index_tip.y - thumb_tip.y
-                    dx2, dy2 = pinky_tip.x - thumb_tip.x, pinky_tip.y - thumb_tip.y
-                    angle1 = math.degrees(math.atan2(abs(dy1), abs(dx1)))
-                    angle2 = math.degrees(math.atan2(abs(dy2), abs(dx2)))
+                    distance1_left = euclidean(thumb_tip, index_tip)
+                    distance2_left = euclidean(thumb_tip, pinky_tip)
+                    dx1_left, dy1_left = index_tip.x - thumb_tip.x, index_tip.y - thumb_tip.y
+                    dx2_left, dy2_left = pinky_tip.x - thumb_tip.x, pinky_tip.y - thumb_tip.y
+                    angle1_left = math.degrees(math.atan2(abs(dy1_left), abs(dx1_left)))
+                    angle2_left = math.degrees(math.atan2(abs(dy2_left), abs(dx2_left)))
+                   
+                    osc_client.send_message("/left/distance1", distance1_left)
+                    osc_client.send_message("/left/rotation1", angle1_left)
+                    osc_client.send_message("/left/distance2", distance2_left)
+                    osc_client.send_message("/left/rotation2", angle2_left)
 
-                    # Trimitem OSC
-                    osc_client.send_message(f"{prefix}/distance1", distance1)
-
-                    print(f"{prefix}/distance1 {distance1}")
-
-                    
-                    osc_client.send_message(f"{prefix}/rotation1", angle1)
-                    osc_client.send_message(f"{prefix}/distance2", distance2)
-                    osc_client.send_message(f"{prefix}/rotation2", angle2)
-
-                    # Transformă coordonatele în pixeli
                     def to_px(landmark):
                         return (int(landmark.x * img.shape[1]), int(landmark.y * img.shape[0]))
 
-                    thumb_px = to_px(thumb_tip)
-                    index_px = to_px(index_tip)
-                    pinky_px = to_px(pinky_tip)
+                    thumb_px_left = to_px(thumb_tip)
+                    index_px_left = to_px(index_tip)
+                    pinky_px_left = to_px(pinky_tip)
 
-                    # Culori
-                    if handedness == "Left":
-                        color1 = (0, 0, 255)      # roșu (distance1)
-                        color2 = (0, 255, 255)    # galben (distance2)
-                        text_color1 = (0, 0, 255)
-                        text_color2 = (0, 255, 255)
-                    else:
-                        color1 = (0, 255, 0)      # verde (distance1)
-                        color2 = (255, 0, 0)      # albastru (distance2)
-                        text_color1 = (0, 255, 0)
-                        text_color2 = (255, 0, 0)
+                    color1_left = (0, 0, 255)      # roșu (distance1)
+                    color2_left = (0, 255, 255)    # galben (distance2)
+                    text_color1_left = (0, 0, 255)
+                    text_color2_left = (0, 255, 255)
 
-                    # Desenăm linii colorate
-                    cv2.line(img, thumb_px, index_px, color1, 2)
-                    cv2.line(img, thumb_px, pinky_px, color2, 2)
+                    cv2.line(img, thumb_px_left, index_px_left, color1_left, 2)
+                    cv2.line(img, thumb_px_left, pinky_px_left, color2_left, 2)
 
-                    # Afișăm valori pe imagine
-                    if handedness == "Left":
-                        x_offset, y_offset = 10, 30  # colțul stânga sus
-                    else:
-                        x_offset, y_offset = img.shape[1] - 200, 30  # colțul dreapta sus
+                    x_offset_left, y_offset_left = 10, 30  # colțul stânga sus
 
-                    cv2.putText(img, f'D1: {distance1:.2f}', (x_offset, y_offset), cv2.FONT_HERSHEY_SIMPLEX, 0.7, text_color1, 2)
-                    cv2.putText(img, f'R1: {angle1:.2f}', (x_offset, y_offset + 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, text_color1, 2)
-                    cv2.putText(img, f'D2: {distance2:.2f}', (x_offset, y_offset + 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, text_color2, 2)
-                    cv2.putText(img, f'R2: {angle2:.2f}', (x_offset, y_offset + 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, text_color2, 2)
+                    cv2.putText(img, f'Left D1: {distance1_left:.2f}', (x_offset_left, y_offset_left), cv2.FONT_HERSHEY_SIMPLEX, 0.7, text_color1_left, 2)
+                    cv2.putText(img, f'Left R1: {angle1_left:.2f}', (x_offset_left, y_offset_left + 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, text_color1_left, 2)
+                    cv2.putText(img, f'Left D2: {distance2_left:.2f}', (x_offset_left, y_offset_left + 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, text_color2_left, 2)
+                    cv2.putText(img, f'Left R2: {angle2_left:.2f}', (x_offset_left, y_offset_left + 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, text_color2_left, 2)
+
+                # Procesare pentru mâna dreaptă
+                if right_hand is not None:
+                    mp_draw.draw_landmarks(img, right_hand, mp_hands.HAND_CONNECTIONS)
+
+                    thumb_tip = right_hand.landmark[mp_hands.HandLandmark.THUMB_TIP]
+                    index_tip = right_hand.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
+                    pinky_tip = right_hand.landmark[mp_hands.HandLandmark.PINKY_TIP]
+                    wrist = right_hand.landmark[mp_hands.HandLandmark.WRIST]
+
+                    distance1_right = euclidean(thumb_tip, index_tip)
+                    distance2_right = euclidean(thumb_tip, pinky_tip)
+                    dx1_right, dy1_right = index_tip.x - thumb_tip.x, index_tip.y - thumb_tip.y
+                    dx2_right, dy2_right = pinky_tip.x - thumb_tip.x, pinky_tip.y - thumb_tip.y
+                    angle1_right = math.degrees(math.atan2(abs(dy1_right), abs(dx1_right)))
+                    angle2_right = math.degrees(math.atan2(abs(dy2_right), abs(dx2_right)))
+
+                    osc_client.send_message("/right/distance1", distance1_right)
+                    osc_client.send_message("/right/rotation1", angle1_right)
+                    osc_client.send_message("/right/distance2", distance2_right)
+                    osc_client.send_message("/right/rotation2", angle2_right)
+
+                    def to_px(landmark):
+                        return (int(landmark.x * img.shape[1]), int(landmark.y * img.shape[0]))
+
+                    thumb_px_right = to_px(thumb_tip)
+                    index_px_right = to_px(index_tip)
+                    pinky_px_right = to_px(pinky_tip)
+
+                    color1_right = (0, 255, 0)      # verde (distance1)
+                    color2_right = (255, 0, 0)      # albastru (distance2)
+                    text_color1_right = (0, 255, 0)
+                    text_color2_right = (255, 0, 0)
+
+                    cv2.line(img, thumb_px_right, index_px_right, color1_right, 2)
+                    cv2.line(img, thumb_px_right, pinky_px_right, color2_right, 2)
+
+                    x_offset_right, y_offset_right = img.shape[1] - 200, 30  # colțul dreapta sus
+
+                    cv2.putText(img, f'Right D1: {distance1_right:.2f}', (x_offset_right, y_offset_right), cv2.FONT_HERSHEY_SIMPLEX, 0.7, text_color1_right, 2)
+                    cv2.putText(img, f'Right R1: {angle1_right:.2f}', (x_offset_right, y_offset_right + 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, text_color1_right, 2)
+                    cv2.putText(img, f'Right D2: {distance2_right:.2f}', (x_offset_right, y_offset_right + 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, text_color2_right, 2)
+                    cv2.putText(img, f'Right R2: {angle2_right:.2f}', (x_offset_right, y_offset_right + 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, text_color2_right, 2)
 
             cv2.imshow("Hand Tracking", img)
             if cv2.waitKey(1) & 0xFF == 27:
@@ -149,7 +182,7 @@ def start_hand_tracking(camera_index):
     threading.Thread(target=run_camera, daemon=True).start()
 
 def osc_start_camera(unused_addr, camera_index):
-    print(f"Camera {camera_index} pornita")
+    print(f"Camera pornita")
     start_hand_tracking(int(camera_index))
 
 def osc_stop_camera(unused_addr):
@@ -167,6 +200,6 @@ disp.map("/camera/start", osc_start_camera)
 disp.map("/camera/stop", osc_stop_camera)
 disp.map("/shutdown", osc_shutdown)
 
-server = osc_server.ThreadingOSCUDPServer(("127.0.0.1", 7400), disp)
-print(f"OSC server pornit pe {server.server_address}")
-server.serve_forever()
+# server = osc_server.ThreadingOSCUDPServer(("127.0.0.1", 7500), disp)
+# print(f"OSC server pornit pe {server.server_address}")
+# server.serve_forever()

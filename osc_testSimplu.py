@@ -1,101 +1,26 @@
-
-
-"""Small example OSC server
-
-This program listens to several addresses, and prints some information about
-received packets.
-"""
-"""
-import argparse
-import math
-
-from pythonosc.dispatcher import Dispatcher
-from pythonosc import osc_server
-
-def print_volume_handler(unused_addr, args, volume):
-  print("[{0}] ~ {1}".format(args[0], volume))
-
-def print_compute_handler(unused_addr, args, volume):
-  try:
-    print("[{0}] ~ {1}".format(args[0], args[1](volume)))
-  except ValueError: pass
-
-if __name__ == "__main__":
-  parser = argparse.ArgumentParser()
-  parser.add_argument("--ip",
-      default="127.0.0.1", help="The ip to listen on")
-  parser.add_argument("--port",
-      type=int, default=5005, help="The port to listen on")
-  args = parser.parse_args()
-
-  dispatcher = Dispatcher()
-  dispatcher.map("/filter", print)
-  dispatcher.map("/volume", print_volume_handler, "Volume")
-  dispatcher.map("/logvolume", print_compute_handler, "Log volume", math.log)
-
-  server = osc_server.ThreadingOSCUDPServer(
-      (args.ip, args.port), dispatcher)
-  print("Serving on {}".format(server.server_address))
-  server.serve_forever()
-  
-  """
-
-
-
-# from pythonosc.udp_client import SimpleUDPClient
-# import time
-
-# # Set IP and port where Max is listening
-# ip = "127.0.0.1"
-# port = 7400  # You can change this but must match in Max
-
-# # Create OSC client
-# client = SimpleUDPClient(ip, port)
-
-# # Send messages
-# for i in range(5):
-#   client.send_message("/hello", f"This is message #{i}")
-#   print(f"Sent: This is message #{i}")
-#   time.sleep(1)
-
-
-
-
-
-
-
-
-
-"""
-
 import cv2
 import numpy as np
 import mediapipe as mp
 from pythonosc import udp_client
-import sys
+from pythonosc import dispatcher, osc_server
 import math
-import tkinter as tk
-from tkinter import ttk
 import threading
-import time
+import sys
 
-# Initialize OSC client
-#osc_client = udp_client.SimpleUDPClient("127.0.0.1", 7400)
+osc_client = udp_client.SimpleUDPClient("127.0.0.1", 7400 )
+osc_client.send_message("/test", 1)
 
-# Initialize MediaPipe Hands
 mp_hands = mp.solutions.hands
-hands = mp_hands.Hands(
-    static_image_mode=False,
-    max_num_hands=2,
-    min_detection_confidence=0.5,
-    min_tracking_confidence=0.5
-)
+hands = mp_hands.Hands(static_image_mode=False,
+                       max_num_hands=2,
+                       min_detection_confidence=0.5,
+                       min_tracking_confidence=0.5)
 mp_draw = mp.solutions.drawing_utils
 
-# Global variables
 current_camera = None
 running = False
-loading = False
+server = None
+shutdown_requested = False
 
 def stop_current_stream():
     global current_camera, running
@@ -106,48 +31,42 @@ def stop_current_stream():
     current_camera = None
 
 def start_hand_tracking(camera_index):
-    global current_camera, running, loading
-    
+    global current_camera, running, shutdown_requested
+
     stop_current_stream()
-    loading = True
-    update_ui_state()
-    
-    def initialize_camera():
-        global current_camera, running, loading
-        
+    shutdown_requested = False
+
+    def run_camera():
+        global current_camera, running, shutdown_requested
+
         cap = cv2.VideoCapture(camera_index)
         if not cap.isOpened():
-            print(f"Error: Could not open webcam {camera_index}.")
-            loading = False
-            update_ui_state()
+            print(f"Eroare: nu pot deschide camera {camera_index}")
             return
 
         current_camera = cap
         running = True
-        loading = False
-        update_ui_state()
 
+        
         frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-        def remap_distance(distance):
-            min_distance = 0.5
-            max_distance = 1.0
-            remapped = (distance - min_distance) / (max_distance - min_distance)
-            return max(0, min(remapped, 1))
+
+        def euclidean(a, b):
+            return np.linalg.norm(np.array([a.x, a.y]) - np.array([b.x, b.y]))
+
+        def remap_distance(val):
+            return np.clip((val - 0.1) / 0.4, 0, 1)
 
         def remap_angle(angle):
-            deadzone = 30
-            if angle < deadzone:
-                return 0
-            else:
-                return min((angle - deadzone) / (90 - deadzone), 1)
+            return np.clip((angle - 30) / 60, 0, 1)
 
-        while running:
+        while running and not shutdown_requested:
             success, img = cap.read()
             if not success:
                 break
 
+            img = cv2.flip(img, 1)
             img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             results = hands.process(img_rgb)
 
@@ -157,7 +76,9 @@ def start_hand_tracking(camera_index):
             max_normalized_angle2 = 0
             max_hand = None
 
-            if results.multi_hand_landmarks:
+            frame_h, frame_w = img.shape[:2]
+
+            if results.multi_hand_landmarks: 
                 for hand_landmarks in results.multi_hand_landmarks:
                     mp_draw.draw_landmarks(img, hand_landmarks, mp_hands.HAND_CONNECTIONS)
 
@@ -220,51 +141,45 @@ def start_hand_tracking(camera_index):
             osc_client.send_message("/hand/distance2", remapped_distance2)
             osc_client.send_message("/hand/rotation2", max_normalized_angle2)
 
-            cv2.imshow("Hand Tracking", img)
+            print("/hand/distance1", remapped_distance1)
+            print("/hand/rotation1", max_normalized_angle1)
+            print("/hand/distance2", remapped_distance2)
+            print("/hand/rotation2", max_normalized_angle2)
 
-            if cv2.waitKey(1) & 0xFF == 27:  # Press 'Esc' to exit
+
+            cv2.imshow("Hand Tracking", img)
+            if cv2.waitKey(1) & 0xFF == 27:
                 break
 
         stop_current_stream()
 
-    threading.Thread(target=initialize_camera, daemon=True).start()
+        if shutdown_requested:
+            print("Shutdown complet. Inchidere program.")
+            if server:
+                server.server_close()
+            sys.exit(0)
 
-def update_ui_state():
-    if loading:
-        status_label.config(text="Loading...")
-        start_button.config(state=tk.DISABLED)
-        camera_menu.config(state=tk.DISABLED)
-    elif running:
-        status_label.config(text="Running")
-        start_button.config(state=tk.NORMAL)
-        camera_menu.config(state=tk.NORMAL)
-    else:
-        status_label.config(text="Stopped")
-        start_button.config(state=tk.NORMAL)
-        camera_menu.config(state=tk.NORMAL)
+    threading.Thread(target=run_camera, daemon=True).start()
 
-# Create the main window
-root = tk.Tk()
-root.title("Camera Selection")
+def osc_start_camera(unused_addr, camera_index):
+    print(f"Camera test pornita")
+    start_hand_tracking(int(camera_index))
 
-# Create a list of camera options
-camera_options = [f"Camera {i}" for i in range(10)]  # Assuming up to 10 cameras
+def osc_stop_camera(unused_addr):
+    print("Camera oprita")
+    stop_current_stream()
 
-# Create and pack the dropdown menu
-camera_var = tk.StringVar(root)
-camera_var.set(camera_options[0])  # Set default value
-camera_menu = ttk.Combobox(root, textvariable=camera_var, values=camera_options)
-camera_menu.pack(pady=10)
+def osc_shutdown(unused_addr):
+    global shutdown_requested
+    print("Shutdown primit. Inchidere script...")
+    shutdown_requested = True
+    running = False
 
-# Create and pack the start button
-start_button = ttk.Button(root, text="Start", command=lambda: start_hand_tracking(int(camera_var.get().split()[1])))
-start_button.pack(pady=10)
+disp = dispatcher.Dispatcher()
+disp.map("/camera/start", osc_start_camera)
+disp.map("/camera/stop", osc_stop_camera)
+disp.map("/shutdown", osc_shutdown)
 
-# Create and pack the status label (throbber)
-status_label = ttk.Label(root, text="Stopped")
-status_label.pack(pady=10)
-
-
-# Start the Tkinter event loop
-root.mainloop()
-"""
+server = osc_server.ThreadingOSCUDPServer(("127.0.0.1", 7400), disp)
+print(f"OSC server pornit pe {server.server_address}")
+server.serve_forever()
