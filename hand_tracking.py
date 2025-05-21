@@ -276,6 +276,8 @@ import mediapipe as mp
 from pythonosc import udp_client
 import sys
 import math
+import tkinter as tk
+from tkinter import ttk
 import threading
 import time
 
@@ -445,6 +447,34 @@ def update_ui_state():
 
 
 
+# Create the main window
+root = tk.Tk()
+root.title("Camera Selection")
+
+# Create a list of camera options
+camera_options = [f"Camera {i}" for i in range(10)]  # Assuming up to 10 cameras
+
+# Create and pack the dropdown menu
+camera_var = tk.StringVar(root)
+camera_var.set(camera_options[0])  # Set default value
+camera_menu = ttk.Combobox(root, textvariable=camera_var, values=camera_options)
+camera_menu.pack(pady=10)
+
+# Create and pack the start button
+start_button = ttk.Button(root, text="Start", command=lambda: start_hand_tracking(int(camera_var.get().split()[1])))
+start_button.pack(pady=10)
+
+# Create and pack the status label (throbber)
+status_label = ttk.Label(root, text="Stopped")
+status_label.pack(pady=10)
+
+# Start the Tkinter event loop
+root.mainloop()
+
+
+
+
+"""
 # Listener OSC pentru control direct din Max
 from pythonosc import dispatcher, osc_server
 
@@ -465,3 +495,5 @@ server = osc_server.ThreadingOSCUDPServer(("127.0.0.1", 7400), disp)
 print(f"Serving OSC on {server.server_address}")
 
 server.serve_forever()
+
+"""
