@@ -47,6 +47,9 @@ def start_hand_tracking(camera_index):
         current_camera = cap
         running = True
 
+        frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
         def euclidean(a, b):
             return np.linalg.norm(np.array([a.x, a.y]) - np.array([b.x, b.y]))
 
@@ -65,14 +68,20 @@ def start_hand_tracking(camera_index):
             img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             results = hands.process(img_rgb)
 
+            max_relative_distance1_left = 0
+            max_normalized_angle1_left = 0
+            max_relative_distance2_left = 0
+            max_normalized_angle2_left = 0
+            max_hand_left = None
+
+
+
             frame_h, frame_w = img.shape[:2]
 
             if results.multi_hand_landmarks: 
-                print("Mana detectata ✅")
                 # Inițializezi variabile pentru fiecare mână
                 left_hand = None
                 right_hand = None
-
                 # Identifici și salvezi separat fiecare mână
                 for i, hand_landmarks in enumerate(results.multi_hand_landmarks):
                     handedness = results.multi_handedness[i].classification[0].label  # 'Left' sau 'Right'
@@ -85,49 +94,77 @@ def start_hand_tracking(camera_index):
                 if left_hand is not None:
                     mp_draw.draw_landmarks(img, left_hand, mp_hands.HAND_CONNECTIONS)
 
-                    thumb_tip = left_hand.landmark[mp_hands.HandLandmark.THUMB_TIP]
-                    index_tip = left_hand.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
-                    pinky_tip = left_hand.landmark[mp_hands.HandLandmark.PINKY_TIP]
+                    thumb = left_hand.landmark[mp_hands.HandLandmark.THUMB_TIP]
+                    index = left_hand.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
+                    pinky = left_hand.landmark[mp_hands.HandLandmark.PINKY_TIP]
                     wrist = left_hand.landmark[mp_hands.HandLandmark.WRIST]
 
-                    distance1_left = euclidean(thumb_tip, index_tip)
-                    distance2_left = euclidean(thumb_tip, pinky_tip)
-                    dx1_left, dy1_left = index_tip.x - thumb_tip.x, index_tip.y - thumb_tip.y
-                    dx2_left, dy2_left = pinky_tip.x - thumb_tip.x, pinky_tip.y - thumb_tip.y
+                    hand_length_left = np.hypot(index.x - wrist.x, index.y - wrist.y)
+                    # Distante brute
+                    distance1_left = np.hypot(index.x - thumb.x, index.y - thumb.y)
+                    distance2_left = np.hypot(pinky.x - thumb.x, pinky.y - thumb.y)
+
+                    # Distante normalizate (relative la lungimea mainii)
+                    relative_distance1_left = distance1_left / hand_length_left
+                    relative_distance2_left = distance2_left / hand_length_left
+
+                    # Unghiuri brute (in grade)
+                    dx1_left, dy1_left = index.x - thumb.x, index.y - thumb.y
+                    dx2_left, dy2_left = pinky.x - thumb.x, pinky.y - thumb.y
                     angle1_left = math.degrees(math.atan2(abs(dy1_left), abs(dx1_left)))
                     angle2_left = math.degrees(math.atan2(abs(dy2_left), abs(dx2_left)))
-                   
-                    osc_client.send_message("/left/distance1", distance1_left)
-                    osc_client.send_message("/left/rotation1", angle1_left)
-                    osc_client.send_message("/left/distance2", distance2_left)
-                    osc_client.send_message("/left/rotation2", angle2_left)
 
-                    print("/left/distance1", distance1_left)
-                    print("/left/rotation1", angle1_left)
-                    print("/left/distance2", distance2_left)
-                    print("/left/rotation2", angle2_left)
-                    def to_px(landmark):
-                        return (int(landmark.x * img.shape[1]), int(landmark.y * img.shape[0]))
+                    # Unghiuri normalizate
+                    normalized_angle1_left = remap_angle(angle1_left)
+                    normalized_angle2_left = remap_angle(angle2_left)
 
-                    thumb_px_left = to_px(thumb_tip)
-                    index_px_left = to_px(index_tip)
-                    pinky_px_left = to_px(pinky_tip)
+                    if relative_distance1_left > max_relative_distance1_left:
+                        max_relative_distance1_left = relative_distance1_left
+                        max_normalized_angle1_left = normalized_angle1_left
+                        max_relative_distance2_left = relative_distance2_left
+                        max_normalized_angle2_left = normalized_angle2_left
+                        max_hand_left = ((thumb.x, thumb.y), (index.x, index.y), (pinky.x, pinky.y))
 
-                    color1_left = (0, 0, 255)      # roșu (distance1)
-                    color2_left = (0, 255, 255)    # galben (distance2)
-                    text_color1_left = (0, 0, 255)
-                    text_color2_left = (0, 255, 255)
+            
+            if max_hand_left:
+                remapped_distance1 = remap_distance(max_relative_distance1_left)
+                remapped_distance2 = remap_distance(max_relative_distance2_left)
+                
+                # Override rotation values if distance is 0
+                if remapped_distance1 == 0:
+                    max_normalized_angle1_left = 0
+                if remapped_distance2 == 0:
+                    max_normalized_angle2_left = 0
 
-                    cv2.line(img, thumb_px_left, index_px_left, color1_left, 2)
-                    cv2.line(img, thumb_px_left, pinky_px_left, color2_left, 2)
+                # Trimiti valorile normalizate prin OSC
+                osc_client.send_message("/left/distance1", relative_distance1_left)
+                osc_client.send_message("/left/rotation1", normalized_angle1_left)
+                osc_client.send_message("/left/distance2", relative_distance2_left)
+                osc_client.send_message("/left/rotation2", normalized_angle2_left)
 
-                    x_offset_left, y_offset_left = 10, 30  # colțul stânga sus
+                # afisare pe imagine:
+                def to_px(landmark):
+                    return (int(landmark.x * img.shape[1]), int(landmark.y * img.shape[0]))
 
-                    cv2.putText(img, f'Left D1: {distance1_left:.2f}', (x_offset_left, y_offset_left), cv2.FONT_HERSHEY_SIMPLEX, 0.7, text_color1_left, 2)
-                    cv2.putText(img, f'Left R1: {angle1_left:.2f}', (x_offset_left, y_offset_left + 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, text_color1_left, 2)
-                    cv2.putText(img, f'Left D2: {distance2_left:.2f}', (x_offset_left, y_offset_left + 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, text_color2_left, 2)
-                    cv2.putText(img, f'Left R2: {angle2_left:.2f}', (x_offset_left, y_offset_left + 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, text_color2_left, 2)
+                thumb_px_left = to_px(thumb)
+                index_px_left = to_px(index)
+                pinky_px_left = to_px(pinky)
 
+                color1_left = (0, 0, 255)      # rosu (distance1)
+                color2_left = (0, 255, 255)    # galben (distance2)
+                text_color1_left = (0, 0, 255)
+                text_color2_left = (0, 255, 255)
+
+                cv2.line(img, thumb_px_left, index_px_left, color1_left, 2)
+                cv2.line(img, thumb_px_left, pinky_px_left, color2_left, 2)
+
+                x_offset_left, y_offset_left = 10, 30  # coltul stanga sus
+
+                cv2.putText(img, f'Left D1: {relative_distance1_left:.2f}', (x_offset_left, y_offset_left), cv2.FONT_HERSHEY_SIMPLEX, 0.7, text_color1_left, 2)
+                cv2.putText(img, f'Left A1: {normalized_angle1_left:.2f}', (x_offset_left, y_offset_left + 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, text_color1_left, 2)
+                cv2.putText(img, f'Left D2: {relative_distance2_left:.2f}', (x_offset_left, y_offset_left + 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, text_color2_left, 2)
+                cv2.putText(img, f'Left A2: {normalized_angle2_left:.2f}', (x_offset_left, y_offset_left + 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, text_color2_left, 2)
+                
                 # Procesare pentru mâna dreaptă
                 if right_hand is not None:
                     mp_draw.draw_landmarks(img, right_hand, mp_hands.HAND_CONNECTIONS)
