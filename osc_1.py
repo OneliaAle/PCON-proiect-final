@@ -7,7 +7,7 @@ import math
 import threading
 import sys
 
-# osc_client = udp_client.SimpleUDPClient("127.0.0.1", 7500)
+osc_client = udp_client.SimpleUDPClient("127.0.0.1", 7500)
 #osc_client.send_message("/test", 1)
 
 mp_hands = mp.solutions.hands
@@ -69,7 +69,7 @@ def start_hand_tracking(camera_index):
 
             if results.multi_hand_landmarks: 
                 print("Mana detectata ✅")
-                # Inițializezi variabile pentru fiecare mână, dacă vrei să le folosești separat mai jos
+                # Inițializezi variabile pentru fiecare mână
                 left_hand = None
                 right_hand = None
 
@@ -200,6 +200,6 @@ disp.map("/camera/start", osc_start_camera)
 disp.map("/camera/stop", osc_stop_camera)
 disp.map("/shutdown", osc_shutdown)
 
-# server = osc_server.ThreadingOSCUDPServer(("127.0.0.1", 7500), disp)
-# print(f"OSC server pornit pe {server.server_address}")
-# server.serve_forever()
+server = osc_server.ThreadingOSCUDPServer(("127.0.0.1", 7411), disp)
+print(f"OSC server pornit pe {server.server_address}")
+server.serve_forever()

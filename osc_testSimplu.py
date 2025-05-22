@@ -7,7 +7,7 @@ import math
 import threading
 import sys
 
-osc_client = udp_client.SimpleUDPClient("127.0.0.1", 7400 )
+osc_client = udp_client.SimpleUDPClient("127.0.0.1", 7411 )
 osc_client.send_message("/test", 1)
 
 mp_hands = mp.solutions.hands
