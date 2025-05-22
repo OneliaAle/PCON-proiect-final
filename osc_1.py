@@ -102,6 +102,10 @@ def start_hand_tracking(camera_index):
                     osc_client.send_message("/left/distance2", distance2_left)
                     osc_client.send_message("/left/rotation2", angle2_left)
 
+                    print("/left/distance1", distance1_left)
+                    print("/left/rotation1", angle1_left)
+                    print("/left/distance2", distance2_left)
+                    print("/left/rotation2", angle2_left)
                     def to_px(landmark):
                         return (int(landmark.x * img.shape[1]), int(landmark.y * img.shape[0]))
 
@@ -144,6 +148,11 @@ def start_hand_tracking(camera_index):
                     osc_client.send_message("/right/rotation1", angle1_right)
                     osc_client.send_message("/right/distance2", distance2_right)
                     osc_client.send_message("/right/rotation2", angle2_right)
+                    
+                    print("/right/distance1", distance1_right)
+                    print("/right/rotation1", angle1_right)
+                    print("/right/distance2", distance2_right)
+                    print("/right/rotation2", angle2_right)
 
                     def to_px(landmark):
                         return (int(landmark.x * img.shape[1]), int(landmark.y * img.shape[0]))
