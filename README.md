@@ -48,6 +48,11 @@ Inițial am găsit pe YouTube un video în care cineva controlează Ableton Live
 
 https://www.youtube.com/watch?v=KRrFFGOX6Sc&pp=ygUdY29udHJvbCBhYmxldG9uIGxpdmUgd2l0aCBtYXg%3D
 
+model de reverb 
+
+https://www.youtube.com/watch?time_continue=87&v=i6rQfjmQHc0&embeds_referring_euri=https%3A%2F%2Fwww.bing.com%2F&embeds_referring_origin=https%3A%2F%2Fwww.bing.com&source_ve_path=MTM5MTE3LDI4NjYzLDI4NjY2
+
+
 Mâna Stângă: controlează Reverb
 /left/distance1 → controlează wet/dry
 /left/rotation1 → controlează decay
