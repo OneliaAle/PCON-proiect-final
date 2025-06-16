@@ -6,6 +6,7 @@ from pythonosc import dispatcher, osc_server
 import math
 import threading
 import sys
+import time
 
 osc_client = udp_client.SimpleUDPClient("127.0.0.1", 7500)
 #osc_client.send_message("/test", 1)
@@ -59,6 +60,7 @@ def start_hand_tracking(camera_index):
         def remap_angle(angle):
             return np.clip((angle - 30) / 60, 0, 1)
 
+        i = 0
         while running and not shutdown_requested:
             success, img = cap.read()
             if not success:
