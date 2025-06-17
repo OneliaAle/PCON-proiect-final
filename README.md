@@ -1,5 +1,5 @@
-# Hand-Controlled Audio Effects
-Acest proiect utilizează recunoașterea gesturilor mâinilor pentru a controla efecte audio în timp real. Folosind Python, MediaPipe și OSC în Max/MSP, distanța și unghiurile dintre degete influențează parametri audio precum reverb și filtre.
+# Hand-Controlled Reverb
+Acest proiect utilizează recunoașterea gesturilor mâinilor pentru a controla un efect audio de reverb în timp real. Folosind Python, MediaPipe și OSC în Max/MSP, distanța și unghiurile dintre degete influențează parametrii audio ai unui reverb.
 
 ## Instalare
 Cerințe:
@@ -19,17 +19,14 @@ Instalează Max de pe Cycling74.
 ## Utilizare
 Efecte implementate
 
-Mâna Stângă: controlează Reverb
-/left/distance1 → controlează wet/dry
-/left/rotation1 → controlează decay
-/left/distance2 → eventual predelay sau dimensiune cameră
-/left/rotation2 → damping sau tonul reverbului
+**Mâna Stângă – Controlează:**
+/left/distance2 → dimensiune camera
+/left/rotation2 → mix dry/wet reverb
 
-Mâna Dreaptă: controlează un Filtru
-/right/distance1 → cutoff (200–8000 Hz)
-/right/rotation1 → rezonanță (Q)
-/right/distance2 → eventual panoramare sau mix dry/wet pentru filtrul aplicat
-/right/rotation2 → tipul filtrului (cu un [selector] între LP/HP/BP etc.)
+**Mâna Dreaptă: Controlează**
+/right/distance1 → predelay
+/right/rotation1 → filtru LP (aplicat reverberatiei)
+
 
 ## (Istoric)
 
@@ -39,7 +36,10 @@ Mâna Dreaptă: controlează un Filtru
 
 (X.06) ...
 
-## (Link-uri)
+## Link-uri
+https://ccrma.stanford.edu/~jos/pasp/Schroeder_Reverberators.html
+https://ccrma.stanford.edu/~jos/pasp/Feedback_Comb_Filters.html
+https://www.youtube.com/watch?v=KRrFFGOX6Sc&pp=ygUdY29udHJvbCBhYmxldG9uIGxpdmUgd2l0aCBtYXg%3D
 
 
 # Dezvoltarea proiectului
@@ -48,42 +48,32 @@ Inițial am găsit pe YouTube un video în care cineva controlează Ableton Live
 
 https://www.youtube.com/watch?v=KRrFFGOX6Sc&pp=ygUdY29udHJvbCBhYmxldG9uIGxpdmUgd2l0aCBtYXg%3D
 
-model de reverb 
+Am implementat reverbul dupa aceste formule in MaxDSP, folosindu-ma de obiectele gen din max penturu a putea aplica cele de mai jos
+https://ccrma.stanford.edu/~jos/pasp/Schroeder_Reverberators.html
+https://ccrma.stanford.edu/~jos/pasp/Feedback_Comb_Filters.html
 
-https://www.youtube.com/watch?time_continue=87&v=i6rQfjmQHc0&embeds_referring_euri=https%3A%2F%2Fwww.bing.com%2F&embeds_referring_origin=https%3A%2F%2Fwww.bing.com&source_ve_path=MTM5MTE3LDI4NjYzLDI4NjY2
+
+time_continue=87&v=i6rQfjmQHc0&embeds_referring_euri=https%3A%2F%2Fwww.bing.com%2F&embeds_referring_origin=https%3A%2F%2Fwww.bing.com&source_ve_path=MTM5MTE3LDI4NjYzLDI4NjY2
 
 
-Mâna Stângă: controlează Reverb
-/left/distance1 → controlează wet/dry
-/left/rotation1 → controlează decay
-/left/distance2 → eventual predelay sau dimensiune cameră
-/left/rotation2 → damping sau tonul reverbului
+**Mâna Stângă – Controlează:**
+/left/distance2 → dimensiune camera
+/left/rotation2 → mix dry/wet reverb
 
-Mâna Dreaptă: controlează un Filtru
-/right/distance1 → cutoff (200–8000 Hz)
-/right/rotation1 → rezonanță (Q)
-/right/distance2 → eventual panoramare sau mix dry/wet pentru filtrul aplicat
-/right/rotation2 → tipul filtrului (cu un [selector] între LP/HP/BP etc.)
+**Mâna Dreaptă: Controlează**
+/right/distance1 → predelay
+/right/rotation1 → filtru LP (aplicat reverberatiei)
+
 
 ## Elemente obligatorii
 
-Fișierul Python   - hand_tracking.py 
-
+Fișierul Python   - osc2.py 
 Conține codul cu MediaPipe + OSC
 
-Patch-ul Max/MSP  - hand_effects.maxpat
+Patch-ul Max/MSP  - orsc_1.maxpat
+Contine implementarea reverbului, in mod de prezentare este o interfata intuitiva 
 
 
 
-1. Acest readme completat. Titlu, descriere, mod de utilizare, istoric, link-uri utile.
 
-   Poți include și imagini și chiar [gif-uri animate](https://www.screentogif.com/), sau link-uri către materiale audio/video.
-   
-   Vezi [aici](https://charlesmartin.com.au/blog/2020/08/09/student-project-repository) mai multe sugestii.
-
-2. [Declarația de originalitate](statement-of-originality.yml) completată. Tot ce nu este inclus acolo va fi considerat 100% contribuție proprie.
-
-    *(formatul este adaptat de [aici](https://gitlab.cecs.anu.edu.au/comp1720/2018/comp1720-2018-major-project/-/blob/master/statement-of-originality.yml). Da, este un pic ironic să refolosim un doc [de altundeva](https://cs.anu.edu.au/courses/comp1720/resources/faq/#how-do-i-fill-out-my-statement-of-originality), dar menționăm sursa deci nu este plagiat!)*
-
-3. Proiectul în sine. Tot codul trebuie să fie prezent, proiectul trebuie să poată rula conform instrucțiunilor din readme. Dacă e nevoie de asset-uri mari (sunete, video etc), [folosește Git LFS](https://git-lfs.github.com/) sau include link de download în instrucțiunile de instalare.
 
