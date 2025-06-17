@@ -53,9 +53,6 @@ https://ccrma.stanford.edu/~jos/pasp/Schroeder_Reverberators.html
 https://ccrma.stanford.edu/~jos/pasp/Feedback_Comb_Filters.html
 
 
-time_continue=87&v=i6rQfjmQHc0&embeds_referring_euri=https%3A%2F%2Fwww.bing.com%2F&embeds_referring_origin=https%3A%2F%2Fwww.bing.com&source_ve_path=MTM5MTE3LDI4NjYzLDI4NjY2
-
-
 **Mâna Stângă – Controlează:**
 /left/distance2 → dimensiune camera
 /left/rotation2 → mix dry/wet reverb
